@@ -12,10 +12,17 @@ class AnalysisState(dict):
     __delattr__ = dict.__delitem__  # type: ignore
 
     def __getattr__(self, item) -> Any:  # needed for mypy checks
-        return self._getattr__(item)
+        attr = getattr(dict, item, None)  # try to get the default attribute from Dict
+        if attr is not None:
+            return attr
+        if item in self:
+            return self._getattr__(item)
 
     def __init__(self, *args, **kwargs) -> None:
+
         for arg in args:
+            if isinstance(arg, str) and getattr(dict, arg, None) is not None:
+                raise KeyError(f'Name {arg} already exists in the inherited attributes of the dict, use another name.')
             if isinstance(arg, dict):
                 for k, v in arg.items():
                     self[k] = v
@@ -24,6 +31,8 @@ class AnalysisState(dict):
             self[k] = v
 
     def __setattr__(self, name: str, value) -> None:
+        if getattr(dict, name, None) is not None:
+            raise KeyError(f'Name {name} already exists in the inherited attributes of the dict, use another name.')
         if isinstance(value, dict):
             value = AnalysisState(value)
         self[name] = value
